@@ -1,0 +1,980 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>dropdir</title>
+<style>
+:root {
+  --bg: #0f1115;
+  --panel: #171a21;
+  --panel-2: #1b1f28;
+  --border: #242833;
+  --border-strong: #2e3340;
+  --text: #e6e6e6;
+  --muted: #9aa0a6;
+  --accent: #5aa9ff;
+  --accent-bg: rgba(90,169,255,0.12);
+  --danger: #ff6b6b;
+  --ok: #4caf50;
+  --warn: #f0b429;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 14px; }
+body { min-height: 100vh; }
+
+header.top { display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+  background: var(--panel); border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 10; }
+header.top h1 { margin: 0; font-size: 16px; font-weight: 600; color: var(--accent);
+  font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.5px; }
+header.top .tag { color: var(--muted); font-size: 12px; }
+header.top .spacer { flex: 1; }
+header.top .hint { color: var(--muted); font-size: 11px; }
+header.top kbd { background: var(--panel-2); border: 1px solid var(--border-strong);
+  border-radius: 3px; padding: 1px 5px; font-family: ui-monospace, monospace;
+  font-size: 10px; color: var(--text); margin: 0 2px; }
+
+main { padding: 14px 16px 40px; max-width: 1280px; margin: 0 auto; }
+
+.bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+  padding: 6px 12px; background: var(--panel); border: 1px solid var(--border);
+  border-radius: 6px; flex: 1; min-width: 200px; }
+.breadcrumb a { color: var(--accent); cursor: pointer; text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+.breadcrumb .sep { color: var(--muted); }
+.filter { background: var(--panel); border: 1px solid var(--border); color: var(--text);
+  padding: 6px 10px 6px 28px; border-radius: 6px; width: 220px; outline: none;
+  font-size: 13px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa0a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='7'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>");
+  background-repeat: no-repeat; background-position: 8px center; }
+.filter:focus { border-color: var(--accent); }
+
+.toolbar { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+
+button, .btn { cursor: pointer; background: var(--panel); color: var(--text); border: 1px solid var(--border);
+  padding: 6px 12px; border-radius: 4px; font-size: 13px; transition: background 0.12s, border-color 0.12s; }
+button:hover { background: var(--panel-2); border-color: var(--border-strong); }
+button:active { transform: translateY(1px); }
+button.primary { background: var(--accent); color: #05111e; border-color: var(--accent); font-weight: 500; }
+button.primary:hover { filter: brightness(1.08); background: var(--accent); }
+button.danger:hover { color: var(--danger); border-color: var(--danger); background: rgba(255,107,107,0.08); }
+button.ghost { background: transparent; }
+
+table { width: 100%; border-collapse: collapse; background: var(--panel);
+  border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+  table-layout: fixed; }
+colgroup col.c-name { width: auto; }
+colgroup col.c-size { width: 90px; }
+colgroup col.c-time { width: 160px; }
+colgroup col.c-act  { width: 320px; }
+th, td { padding: 7px 12px; text-align: left; border-bottom: 1px solid var(--border);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+th { background: var(--panel-2); color: var(--muted); font-weight: 500; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.7px; user-select: none; }
+th.sortable { cursor: pointer; }
+th.sortable:hover { color: var(--text); }
+th .arrow { color: var(--accent); margin-left: 4px; font-size: 10px; }
+tr:last-child td { border-bottom: none; }
+tr.row:hover td { background: #1c212d; }
+tr.row.selected td { background: var(--accent-bg); box-shadow: inset 2px 0 0 var(--accent); }
+td.name { display: flex; align-items: center; gap: 8px;
+  font-family: ui-monospace, Menlo, Consolas, monospace; }
+td.name .icon { width: 18px; text-align: center; flex: 0 0 auto; }
+td.name a { color: var(--text); cursor: pointer; overflow: hidden; text-overflow: ellipsis; }
+td.name a:hover { color: var(--accent); }
+td.name.dir a { color: var(--accent); }
+td.actions { text-align: right; white-space: nowrap; overflow: visible; text-overflow: clip; }
+td.actions button { margin-left: 4px; padding: 3px 8px; font-size: 12px; }
+.size, .mtime { color: var(--muted); font-variant-numeric: tabular-nums; }
+.empty { padding: 40px; text-align: center; color: var(--muted); }
+
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none;
+  align-items: stretch; justify-content: stretch; z-index: 100; }
+.overlay.open { display: flex; }
+
+.editor { width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg); }
+.editor .ebar { display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+  background: var(--panel); border-bottom: 1px solid var(--border); }
+.editor .title { flex: 1; font-family: ui-monospace, monospace; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.editor .info { color: var(--muted); font-size: 12px; margin-right: 8px; }
+.editor textarea { flex: 1; width: 100%; border: none; outline: none; resize: none;
+  background: #0b0d11; color: var(--text); font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px; padding: 14px 16px; line-height: 1.55; tab-size: 4; }
+
+.status { position: fixed; bottom: 16px; right: 16px; padding: 10px 14px; border-radius: 4px;
+  background: var(--panel); border: 1px solid var(--border); color: var(--text); z-index: 200;
+  max-width: 400px; opacity: 0; transform: translateY(8px); transition: opacity 0.18s, transform 0.18s;
+  pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+.status.show { opacity: 1; transform: translateY(0); }
+.status.ok { border-color: var(--ok); }
+.status.err { border-color: var(--danger); color: var(--danger); }
+
+/* Drag-drop overlay */
+#dropzone { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+  background: rgba(90,169,255,0.12); backdrop-filter: blur(2px); z-index: 150;
+  pointer-events: none; }
+#dropzone.active { display: flex; }
+#dropzone .box { border: 3px dashed var(--accent); border-radius: 14px;
+  padding: 48px 72px; background: var(--panel); color: var(--accent); font-size: 18px;
+  font-weight: 500; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+#dropzone .box .sub { color: var(--muted); font-size: 13px; margin-top: 6px; font-weight: 400; }
+
+/* Upload progress panel */
+#uploads { position: fixed; bottom: 16px; left: 16px; width: 320px; display: none;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 12px; z-index: 180; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+#uploads.show { display: block; }
+#uploads .head { display: flex; justify-content: space-between; font-size: 12px;
+  color: var(--muted); margin-bottom: 8px; }
+#uploads .item { margin-bottom: 6px; }
+#uploads .item:last-child { margin-bottom: 0; }
+#uploads .name { font-size: 12px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; margin-bottom: 2px; font-family: ui-monospace, monospace; }
+#uploads .bar { height: 4px; background: #0b0d11; border-radius: 2px; overflow: hidden; margin: 0; }
+#uploads .fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.12s; }
+#uploads .item.done .fill { background: var(--ok); }
+#uploads .item.err .fill { background: var(--danger); }
+#uploads .item.err .name { color: var(--danger); }
+
+#fileInput { display: none; }
+
+/* Custom modal (confirm / prompt) */
+.modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.55); backdrop-filter: blur(2px); z-index: 220; }
+.modal.open { display: flex; }
+.modal .card { background: var(--panel); border: 1px solid var(--border-strong); border-radius: 8px;
+  width: min(440px, calc(100vw - 32px)); box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  animation: modalIn 0.12s ease-out; }
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.modal .head { padding: 14px 18px 0; font-size: 14px; font-weight: 600; color: var(--text); }
+.modal .body { padding: 8px 18px 4px; color: var(--muted); font-size: 13px; line-height: 1.55; white-space: pre-wrap; word-break: break-all; }
+.modal .body code { background: var(--panel-2); padding: 1px 6px; border-radius: 3px;
+  font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--text); font-size: 12px; }
+.modal .input { display: block; width: calc(100% - 36px); margin: 12px 18px 4px;
+  background: var(--bg); border: 1px solid var(--border-strong); border-radius: 4px;
+  color: var(--text); padding: 8px 10px; font-size: 13px; outline: none;
+  font-family: ui-monospace, Menlo, Consolas, monospace; }
+.modal .input:focus { border-color: var(--accent); }
+.modal .hint { padding: 2px 18px 0; color: var(--muted); font-size: 11px; min-height: 14px; }
+.modal .hint.err { color: var(--danger); }
+.modal .foot { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 18px 16px; }
+.modal .foot button { min-width: 72px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>dropdir</h1>
+  <span class="tag">本地文件管理</span>
+  <span class="spacer"></span>
+  <span class="hint">
+    <kbd>↑</kbd><kbd>↓</kbd> 选择 <kbd>Enter</kbd> 打开
+    <kbd>Backspace</kbd> 上层 <kbd>/</kbd> 搜索 <kbd>⌘/Ctrl+S</kbd> 保存
+  </span>
+</header>
+<main>
+  <div class="bar">
+    <div class="breadcrumb" id="crumbs"></div>
+    <input class="filter" id="filterInput" type="search" placeholder="筛选当前目录... (按 /)" />
+  </div>
+  <div class="toolbar">
+    <button class="primary" onclick="document.getElementById('fileInput').click()">⬆ 上传文件</button>
+    <button onclick="newTextFile()">＋ 新建文本</button>
+    <button onclick="refresh()" title="刷新 (R)">⟳ 刷新</button>
+    <span style="flex:1"></span>
+    <span id="countInfo" style="color:var(--muted); font-size:12px;"></span>
+    <input id="fileInput" type="file" multiple onchange="uploadFiles(this.files); this.value='';" />
+  </div>
+  <div id="listing"></div>
+</main>
+
+<div class="overlay" id="editor">
+  <div class="editor">
+    <div class="ebar">
+      <span class="title" id="editorTitle"></span>
+      <span class="info" id="editorInfo"></span>
+      <button class="primary" onclick="saveEditor()">保存 ⌘/Ctrl+S</button>
+      <button onclick="closeEditor()">取消 Esc</button>
+    </div>
+    <textarea id="editorArea" spellcheck="false"></textarea>
+  </div>
+</div>
+
+<div id="dropzone">
+  <div class="box">
+    ⬇ 拖放到这里上传
+    <div class="sub" id="dropzoneSub">当前目录 · /</div>
+  </div>
+</div>
+
+<div id="uploads">
+  <div class="head">
+    <span id="uploadsTitle">上传中...</span>
+    <span id="uploadsStats"></span>
+  </div>
+  <div id="uploadsItems"></div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="card" role="dialog" aria-modal="true">
+    <div class="head" id="modalTitle"></div>
+    <div class="body" id="modalBody"></div>
+    <input class="input" id="modalInput" type="text" autocomplete="off" spellcheck="false" />
+    <div class="hint" id="modalHint"></div>
+    <div class="foot">
+      <button id="modalCancel">取消</button>
+      <button id="modalOk" class="primary">确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="status" id="status"></div>
+
+<script>
+"use strict";
+
+// ---------- state ----------
+let currentPath = "";
+let editingPath = null;
+let rawEntries = [];
+let viewEntries = [];
+let selectedIndex = -1;
+let sortKey = "name";      // name | size | modified
+let sortDir = "asc";       // asc | desc
+let filterText = "";
+
+// ---------- auth ----------
+// Token is persisted in localStorage so it survives page refreshes with no
+// expiration — the server only rotates it on restart (or when --token is set),
+// and we clear the stored value on 401 so a stale one can't wedge the UI.
+const AUTH_STORAGE_KEY = "dropdir.token";
+const AUTH_TOKEN = (() => {
+  let stored = "";
+  try { stored = window.localStorage.getItem(AUTH_STORAGE_KEY) || ""; } catch (_) {}
+  const u = new URL(window.location.href);
+  const fromUrl = u.searchParams.get("t") || "";
+  const t = fromUrl || stored;
+  if (fromUrl && fromUrl !== stored) {
+    try { window.localStorage.setItem(AUTH_STORAGE_KEY, fromUrl); } catch (_) {}
+  }
+  if (fromUrl) {
+    u.searchParams.delete("t");
+    window.history.replaceState({}, "", u.pathname + (u.search || ""));
+  }
+  return t;
+})();
+function clearStoredToken() {
+  try { window.localStorage.removeItem(AUTH_STORAGE_KEY); } catch (_) {}
+}
+function authHeaders() {
+  return AUTH_TOKEN ? { "Authorization": "Bearer " + AUTH_TOKEN } : {};
+}
+function withToken(url) {
+  if (!AUTH_TOKEN) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return url + sep + "t=" + encodeURIComponent(AUTH_TOKEN);
+}
+
+// ---------- helpers ----------
+function q(p) { return "?path=" + encodeURIComponent(p); }
+function fmtSize(n) {
+  if (n < 1024) return n + " B";
+  if (n < 1024*1024) return (n/1024).toFixed(1) + " KB";
+  if (n < 1024*1024*1024) return (n/1024/1024).toFixed(1) + " MB";
+  return (n/1024/1024/1024).toFixed(2) + " GB";
+}
+function fmtTime(iso) {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  const p = n => String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function toast(msg, kind) {
+  const el = document.getElementById("status");
+  el.textContent = msg;
+  el.className = "status show " + (kind || "ok");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { el.className = "status"; }, 3000);
+}
+function childOf(path, name) { return path ? path + "/" + name : name; }
+
+// ---------- custom modal (confirm / prompt) ----------
+// Single reusable modal; one at a time. Returns a promise that resolves with
+// the input string (prompt) or true/false (confirm), or null/false on cancel.
+let _modalResolve = null;
+function closeModal(result) {
+  const m = document.getElementById("modal");
+  if (!m.classList.contains("open")) return;
+  m.classList.remove("open");
+  const resolve = _modalResolve;
+  _modalResolve = null;
+  if (resolve) resolve(result);
+}
+function openModal({ title, body, input, placeholder, okText, cancelText, danger, validate }) {
+  return new Promise(resolve => {
+    // If a previous modal is somehow open, close it as cancel first.
+    if (_modalResolve) { const r = _modalResolve; _modalResolve = null; r(input !== undefined ? null : false); }
+    _modalResolve = resolve;
+
+    document.getElementById("modalTitle").textContent = title || "";
+    const bodyEl = document.getElementById("modalBody");
+    bodyEl.innerHTML = "";
+    if (body) {
+      // Support a simple "message {code}" rendering so paths display as <code>.
+      const parts = String(body).split(/(`[^`]+`)/g);
+      for (const p of parts) {
+        if (p.startsWith("`") && p.endsWith("`")) {
+          const c = document.createElement("code");
+          c.textContent = p.slice(1, -1);
+          bodyEl.appendChild(c);
+        } else if (p) {
+          bodyEl.appendChild(document.createTextNode(p));
+        }
+      }
+    }
+
+    const inputEl = document.getElementById("modalInput");
+    const hintEl = document.getElementById("modalHint");
+    hintEl.textContent = "";
+    hintEl.classList.remove("err");
+    const isPrompt = input !== undefined;
+    inputEl.style.display = isPrompt ? "" : "none";
+    hintEl.style.display = isPrompt ? "" : "none";
+    if (isPrompt) {
+      inputEl.value = input || "";
+      inputEl.placeholder = placeholder || "";
+    }
+
+    const okBtn = document.getElementById("modalOk");
+    const cancelBtn = document.getElementById("modalCancel");
+    okBtn.textContent = okText || "确定";
+    cancelBtn.textContent = cancelText || "取消";
+    okBtn.classList.toggle("danger", !!danger);
+    okBtn.classList.toggle("primary", !danger);
+
+    const submit = () => {
+      if (isPrompt) {
+        const v = inputEl.value;
+        if (validate) {
+          const err = validate(v);
+          if (err) { hintEl.textContent = err; hintEl.classList.add("err"); return; }
+        }
+        closeModal(v);
+      } else {
+        closeModal(true);
+      }
+    };
+    const cancel = () => closeModal(isPrompt ? null : false);
+
+    okBtn.onclick = submit;
+    cancelBtn.onclick = cancel;
+
+    // Open and focus
+    document.getElementById("modal").classList.add("open");
+    if (isPrompt) {
+      setTimeout(() => { inputEl.focus(); inputEl.select(); }, 0);
+    } else {
+      setTimeout(() => okBtn.focus(), 0);
+    }
+  });
+}
+function customConfirm(title, body, opts = {}) {
+  return openModal({ title, body,
+    okText: opts.okText || "确定",
+    cancelText: opts.cancelText || "取消",
+    danger: opts.danger });
+}
+function customPrompt(title, body, defaultValue = "", opts = {}) {
+  return openModal({ title, body, input: defaultValue,
+    placeholder: opts.placeholder,
+    okText: opts.okText || "确定",
+    cancelText: opts.cancelText || "取消",
+    validate: opts.validate });
+}
+function modalIsOpen() { return document.getElementById("modal").classList.contains("open"); }
+
+// ---------- generic JSON api ----------
+async function api(method, url, body, raw) {
+  const opts = { method, headers: Object.assign({}, authHeaders()) };
+  if (body instanceof FormData) {
+    opts.body = body;
+  } else if (body != null) {
+    opts.headers["Content-Type"] = "application/json";
+    opts.body = JSON.stringify(body);
+  }
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    const t = await res.text();
+    if (res.status === 401) {
+      clearStoredToken();
+      throw new Error("未授权(token 无效)。请使用启动时打印的 URL 重新打开页面。");
+    }
+    throw new Error(t || res.statusText);
+  }
+  if (raw) return res;
+  const ct = res.headers.get("content-type") || "";
+  if (ct.includes("application/json")) return res.json();
+  return res.text();
+}
+
+// ---------- upload via XHR (progress) ----------
+function uploadOne(file, destPath, onProgress) {
+  return new Promise((resolve, reject) => {
+    const fd = new FormData();
+    fd.append("file", file, file.name);
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/upload" + q(destPath));
+    if (AUTH_TOKEN) xhr.setRequestHeader("Authorization", "Bearer " + AUTH_TOKEN);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(e.loaded, e.total);
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress(1, 1, true);
+        resolve();
+      } else if (xhr.status === 401) {
+        clearStoredToken();
+        reject(new Error("未授权"));
+      } else {
+        reject(new Error(xhr.responseText || xhr.statusText || ("HTTP " + xhr.status)));
+      }
+    };
+    xhr.onerror = () => reject(new Error("网络错误"));
+    xhr.send(fd);
+  });
+}
+
+async function uploadFiles(files) {
+  if (!files || !files.length) return;
+  const dest = currentPath;
+  const panel = document.getElementById("uploads");
+  const itemsBox = document.getElementById("uploadsItems");
+  const title = document.getElementById("uploadsTitle");
+  const stats = document.getElementById("uploadsStats");
+  itemsBox.innerHTML = "";
+  panel.classList.add("show");
+  title.textContent = `上传到 ${dest || "/"}`;
+  stats.textContent = `0 / ${files.length}`;
+
+  let done = 0;
+  let failed = 0;
+  const nodes = [];
+  for (const f of files) {
+    const wrap = document.createElement("div");
+    wrap.className = "item";
+    wrap.innerHTML = '<div class="name"></div><div class="bar"><div class="fill"></div></div>';
+    wrap.querySelector(".name").textContent = f.name + "  (" + fmtSize(f.size) + ")";
+    itemsBox.appendChild(wrap);
+    nodes.push(wrap);
+  }
+
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    const node = nodes[i];
+    const fill = node.querySelector(".fill");
+    try {
+      await uploadOne(f, dest, (loaded, total, complete) => {
+        const pct = total > 0 ? (loaded / total * 100) : 0;
+        fill.style.width = pct.toFixed(1) + "%";
+        if (complete) node.classList.add("done");
+      });
+      done++;
+    } catch (e) {
+      failed++;
+      node.classList.add("err");
+      node.querySelector(".name").textContent += "  — 失败: " + e.message;
+    }
+    stats.textContent = (done + failed) + " / " + files.length;
+  }
+
+  if (failed === 0) {
+    toast("已上传 " + done + " 个文件", "ok");
+  } else {
+    toast(`${done} 个成功, ${failed} 个失败`, failed === files.length ? "err" : "ok");
+  }
+  setTimeout(() => panel.classList.remove("show"), failed ? 6000 : 1500);
+  refresh();
+}
+
+// ---------- listing ----------
+function renderCrumbs() {
+  const parts = currentPath.split("/").filter(Boolean);
+  const box = document.getElementById("crumbs");
+  box.innerHTML = "";
+  const mk = (label, path) => {
+    const a = document.createElement("a");
+    a.textContent = label;
+    a.onclick = () => { go(path); };
+    return a;
+  };
+  box.appendChild(mk("/ 根目录", ""));
+  let acc = "";
+  parts.forEach((p) => {
+    const sep = document.createElement("span");
+    sep.className = "sep"; sep.textContent = " / ";
+    box.appendChild(sep);
+    acc = acc ? acc + "/" + p : p;
+    box.appendChild(mk(p, acc));
+  });
+  document.getElementById("dropzoneSub").textContent = "当前目录 · " + (currentPath || "/");
+}
+
+function go(path) {
+  currentPath = path;
+  filterText = "";
+  document.getElementById("filterInput").value = "";
+  selectedIndex = -1;
+  refresh();
+}
+
+async function refresh() {
+  renderCrumbs();
+  const box = document.getElementById("listing");
+  box.innerHTML = "<div class='empty'>加载中…</div>";
+  try {
+    const data = await api("GET", "/api/list" + q(currentPath));
+    rawEntries = data.entries;
+    rerender();
+  } catch (e) {
+    box.innerHTML = "<div class='empty' style='color:var(--danger)'>加载失败: " + e.message + "</div>";
+    rawEntries = [];
+    viewEntries = [];
+    document.getElementById("countInfo").textContent = "";
+  }
+}
+
+function rerender() {
+  const filtered = filterText
+    ? rawEntries.filter(e => e.name.toLowerCase().includes(filterText.toLowerCase()))
+    : rawEntries.slice();
+
+  filtered.sort((a, b) => {
+    if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1;
+    let cmp = 0;
+    if (sortKey === "name") {
+      cmp = a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    } else if (sortKey === "size") {
+      cmp = (a.is_dir ? -1 : (a.size||0)) - (b.is_dir ? -1 : (b.size||0));
+      if (cmp === 0) cmp = a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    } else if (sortKey === "modified") {
+      const at = a.modified ? new Date(a.modified).getTime() : 0;
+      const bt = b.modified ? new Date(b.modified).getTime() : 0;
+      cmp = at - bt;
+      if (cmp === 0) cmp = a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    }
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+
+  viewEntries = filtered;
+  if (selectedIndex >= viewEntries.length) selectedIndex = viewEntries.length - 1;
+
+  const info = document.getElementById("countInfo");
+  const totalDirs = rawEntries.filter(e => e.is_dir).length;
+  const totalFiles = rawEntries.length - totalDirs;
+  info.textContent = filterText
+    ? `${viewEntries.length} / ${rawEntries.length} 项(筛选中)`
+    : `${totalDirs} 个目录 · ${totalFiles} 个文件`;
+
+  renderTable();
+}
+
+function sortArrow(key) {
+  if (sortKey !== key) return "";
+  return sortDir === "asc" ? " ↑" : " ↓";
+}
+
+function renderTable() {
+  const box = document.getElementById("listing");
+  if (!viewEntries.length) {
+    box.innerHTML = "<div class='empty'>" + (filterText ? "(无匹配项)" : "(空目录)") + "</div>";
+    return;
+  }
+  const tbl = document.createElement("table");
+  tbl.innerHTML =
+    '<colgroup><col class="c-name"><col class="c-size"><col class="c-time"><col class="c-act"></colgroup>' +
+    '<thead><tr>' +
+    '<th class="sortable" data-sort="name">名称<span class="arrow">' + sortArrow("name") + '</span></th>' +
+    '<th class="sortable" data-sort="size">大小<span class="arrow">' + sortArrow("size") + '</span></th>' +
+    '<th class="sortable" data-sort="modified">修改时间<span class="arrow">' + sortArrow("modified") + '</span></th>' +
+    '<th style="text-align:right">操作</th>' +
+    '</tr></thead>';
+  tbl.querySelectorAll("th.sortable").forEach(th => {
+    th.onclick = () => {
+      const k = th.dataset.sort;
+      if (sortKey === k) sortDir = (sortDir === "asc" ? "desc" : "asc");
+      else { sortKey = k; sortDir = "asc"; }
+      rerender();
+    };
+  });
+  const tbody = document.createElement("tbody");
+  viewEntries.forEach((e, idx) => {
+    const tr = document.createElement("tr");
+    tr.className = "row" + (idx === selectedIndex ? " selected" : "");
+    tr.dataset.idx = idx;
+    tr.onmousedown = () => { selectedIndex = idx; highlightSelection(); };
+    const childPath = childOf(currentPath, e.name);
+
+    const nameTd = document.createElement("td");
+    nameTd.className = "name" + (e.is_dir ? " dir" : "");
+    const icon = document.createElement("span");
+    icon.className = "icon";
+    icon.textContent = e.is_dir ? "📁" : (e.editable ? "📝" : "📄");
+    nameTd.appendChild(icon);
+    const link = document.createElement("a");
+    link.textContent = e.name;
+    link.title = e.name;
+    link.onclick = () => activate(idx);
+    nameTd.appendChild(link);
+    tr.appendChild(nameTd);
+
+    const sizeTd = document.createElement("td");
+    sizeTd.className = "size";
+    sizeTd.textContent = e.is_dir ? "—" : fmtSize(e.size);
+    tr.appendChild(sizeTd);
+
+    const mtd = document.createElement("td");
+    mtd.className = "mtime";
+    mtd.textContent = fmtTime(e.modified);
+    tr.appendChild(mtd);
+
+    const actTd = document.createElement("td");
+    actTd.className = "actions";
+    if (!e.is_dir) {
+      const dl = document.createElement("button");
+      dl.textContent = "下载";
+      dl.onclick = (ev) => { ev.stopPropagation(); downloadFile(childPath); };
+      actTd.appendChild(dl);
+      if (e.editable) {
+        const ed = document.createElement("button");
+        ed.textContent = "编辑";
+        ed.onclick = (ev) => { ev.stopPropagation(); openEditor(childPath); };
+        actTd.appendChild(ed);
+      }
+    }
+    const cp = document.createElement("button");
+    cp.textContent = "路径";
+    cp.title = "复制相对路径";
+    cp.onclick = (ev) => { ev.stopPropagation(); copyPath(childPath); };
+    actTd.appendChild(cp);
+    const rn = document.createElement("button");
+    rn.textContent = "重命名";
+    rn.onclick = (ev) => { ev.stopPropagation(); renameEntry(childPath, e.name); };
+    actTd.appendChild(rn);
+    const del = document.createElement("button");
+    del.className = "danger";
+    del.textContent = "删除";
+    del.onclick = (ev) => { ev.stopPropagation(); deleteEntry(childPath, e.is_dir); };
+    actTd.appendChild(del);
+    tr.appendChild(actTd);
+
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody);
+  box.innerHTML = "";
+  box.appendChild(tbl);
+}
+
+function highlightSelection() {
+  const rows = document.querySelectorAll("tr.row");
+  rows.forEach(r => {
+    r.classList.toggle("selected", Number(r.dataset.idx) === selectedIndex);
+  });
+  const sel = document.querySelector("tr.row.selected");
+  if (sel) sel.scrollIntoView({ block: "nearest" });
+}
+
+function activate(idx) {
+  const e = viewEntries[idx];
+  if (!e) return;
+  const childPath = childOf(currentPath, e.name);
+  if (e.is_dir) go(childPath);
+  else if (e.editable) openEditor(childPath);
+  else downloadFile(childPath);
+}
+
+// ---------- actions ----------
+function downloadFile(path) {
+  const url = withToken("/api/download" + q(path));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+async function copyPath(path) {
+  try {
+    await navigator.clipboard.writeText(path);
+    toast("已复制: " + path, "ok");
+  } catch (e) {
+    // Clipboard API can fail in insecure contexts; fall back to a temp input.
+    const ta = document.createElement("textarea");
+    ta.value = path;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("已复制: " + path, "ok"); }
+    catch { toast("复制失败: " + e.message, "err"); }
+    ta.remove();
+  }
+}
+
+async function renameEntry(path, currentName) {
+  const next = await customPrompt("重命名", `将 \`${path}\` 重命名为:`, currentName, {
+    placeholder: "新文件名",
+    validate: (v) => {
+      if (!v) return "名称不能为空";
+      if (v.includes("/") || v.includes("\\")) return "不能包含路径分隔符";
+      return null;
+    },
+  });
+  if (next === null || next === currentName) return;
+  const parent = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
+  const to = parent ? parent + "/" + next : next;
+  try {
+    await api("POST", "/api/rename", { from: path, to });
+    toast("已重命名", "ok");
+    refresh();
+  } catch (e) {
+    toast("重命名失败: " + e.message, "err");
+  }
+}
+
+async function deleteEntry(path, isDir) {
+  const label = isDir ? "目录(必须为空)" : "文件";
+  const ok = await customConfirm(`删除${label}`, `此操作不可撤销。\n\n\`${path}\``, {
+    okText: "删除",
+    danger: true,
+  });
+  if (!ok) return;
+  try {
+    await api("DELETE", "/api/delete" + q(path));
+    toast("已删除", "ok");
+    refresh();
+  } catch (e) {
+    toast("删除失败: " + e.message, "err");
+  }
+}
+
+async function openEditor(path) {
+  try {
+    const res = await api("GET", "/api/read" + q(path), null, true);
+    const text = await res.text();
+    editingPath = path;
+    document.getElementById("editorTitle").textContent = path;
+    const area = document.getElementById("editorArea");
+    area.value = text;
+    updateEditorInfo();
+    document.getElementById("editor").classList.add("open");
+    area.focus();
+    area.setSelectionRange(0, 0);
+    area.scrollTop = 0;
+  } catch (e) {
+    toast("打开失败: " + e.message, "err");
+  }
+}
+
+function updateEditorInfo() {
+  const area = document.getElementById("editorArea");
+  const t = area.value;
+  const lines = t.length ? t.split("\n").length : 0;
+  const bytes = new Blob([t]).size;
+  document.getElementById("editorInfo").textContent = `${lines} 行 · ${fmtSize(bytes)}`;
+}
+
+function closeEditor() {
+  editingPath = null;
+  document.getElementById("editor").classList.remove("open");
+}
+
+async function saveEditor() {
+  if (!editingPath) return;
+  const content = document.getElementById("editorArea").value;
+  try {
+    await api("POST", "/api/write", { path: editingPath, content });
+    toast("已保存", "ok");
+    closeEditor();
+    refresh();
+  } catch (e) {
+    toast("保存失败: " + e.message, "err");
+  }
+}
+
+async function newTextFile() {
+  const name = await customPrompt("新建文本文件", "在当前目录下创建一个新的文本文件:", "", {
+    placeholder: "例: notes.txt",
+    validate: (v) => {
+      if (!v) return "文件名不能为空";
+      if (v.includes("/") || v.includes("\\")) return "不能包含路径分隔符";
+      return null;
+    },
+  });
+  if (!name) return;
+  const path = childOf(currentPath, name);
+  try {
+    await api("POST", "/api/write", { path, content: "" });
+    toast("已创建", "ok");
+    await refresh();
+    openEditor(path);
+  } catch (e) {
+    toast("创建失败: " + e.message, "err");
+  }
+}
+
+// ---------- drag & drop ----------
+let dragCounter = 0;
+function onDragEnter(e) {
+  if (!e.dataTransfer || !Array.from(e.dataTransfer.types || []).includes("Files")) return;
+  e.preventDefault();
+  dragCounter++;
+  document.getElementById("dropzone").classList.add("active");
+}
+function onDragOver(e) {
+  if (!e.dataTransfer || !Array.from(e.dataTransfer.types || []).includes("Files")) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "copy";
+}
+function onDragLeave(e) {
+  if (!e.dataTransfer || !Array.from(e.dataTransfer.types || []).includes("Files")) return;
+  e.preventDefault();
+  dragCounter = Math.max(0, dragCounter - 1);
+  if (dragCounter === 0) document.getElementById("dropzone").classList.remove("active");
+}
+function onDrop(e) {
+  e.preventDefault();
+  dragCounter = 0;
+  document.getElementById("dropzone").classList.remove("active");
+  if (!e.dataTransfer) return;
+  const files = e.dataTransfer.files;
+  if (files && files.length) uploadFiles(files);
+}
+window.addEventListener("dragenter", onDragEnter);
+window.addEventListener("dragover", onDragOver);
+window.addEventListener("dragleave", onDragLeave);
+window.addEventListener("drop", onDrop);
+
+// ---------- keyboard ----------
+function isTypingTarget(el) {
+  if (!el) return false;
+  const tag = (el.tagName || "").toUpperCase();
+  return tag === "INPUT" || tag === "TEXTAREA" || el.isContentEditable;
+}
+
+// Modal-local keys: Enter submits, Esc cancels. Registered on the modal
+// root so it intercepts before the global handler.
+document.getElementById("modal").addEventListener("keydown", (ev) => {
+  if (!modalIsOpen()) return;
+  if (ev.key === "Enter") {
+    ev.preventDefault();
+    document.getElementById("modalOk").click();
+  } else if (ev.key === "Escape") {
+    ev.preventDefault();
+    document.getElementById("modalCancel").click();
+  }
+});
+// Clicking the backdrop cancels.
+document.getElementById("modal").addEventListener("mousedown", (ev) => {
+  if (ev.target.id === "modal") {
+    document.getElementById("modalCancel").click();
+  }
+});
+
+document.addEventListener("keydown", (ev) => {
+  // When a modal is open, don't let global shortcuts fire underneath.
+  if (modalIsOpen()) return;
+
+  const editorOpen = document.getElementById("editor").classList.contains("open");
+
+  // ⌘/Ctrl+S always saves when editor open
+  if ((ev.metaKey || ev.ctrlKey) && (ev.key === "s" || ev.key === "S")) {
+    if (editorOpen) { ev.preventDefault(); saveEditor(); }
+    return;
+  }
+  // Esc closes editor
+  if (ev.key === "Escape") {
+    if (editorOpen) { closeEditor(); return; }
+    // Otherwise clear filter
+    if (document.activeElement === document.getElementById("filterInput")) {
+      document.getElementById("filterInput").value = "";
+      filterText = "";
+      rerender();
+      document.getElementById("filterInput").blur();
+      return;
+    }
+  }
+  if (editorOpen) return;
+
+  // If typing in filter/input, only a few keys apply
+  const typing = isTypingTarget(document.activeElement);
+
+  // "/" focuses filter
+  if (!typing && ev.key === "/") {
+    ev.preventDefault();
+    document.getElementById("filterInput").focus();
+    return;
+  }
+  // R refreshes
+  if (!typing && (ev.key === "r" || ev.key === "R")) {
+    ev.preventDefault();
+    refresh();
+    return;
+  }
+  // Backspace goes up (unless typing)
+  if (!typing && ev.key === "Backspace") {
+    ev.preventDefault();
+    goUp();
+    return;
+  }
+  // Arrow navigation — works even while typing in filter
+  if (ev.key === "ArrowDown") {
+    if (viewEntries.length === 0) return;
+    ev.preventDefault();
+    selectedIndex = Math.min(viewEntries.length - 1, selectedIndex + 1);
+    if (selectedIndex < 0) selectedIndex = 0;
+    highlightSelection();
+    return;
+  }
+  if (ev.key === "ArrowUp") {
+    if (viewEntries.length === 0) return;
+    ev.preventDefault();
+    selectedIndex = Math.max(0, selectedIndex - 1);
+    highlightSelection();
+    return;
+  }
+  if (ev.key === "Enter") {
+    if (selectedIndex >= 0 && selectedIndex < viewEntries.length) {
+      ev.preventDefault();
+      activate(selectedIndex);
+    }
+    return;
+  }
+});
+
+function goUp() {
+  if (!currentPath) return;
+  const parts = currentPath.split("/").filter(Boolean);
+  parts.pop();
+  go(parts.join("/"));
+}
+
+// ---------- filter input ----------
+document.getElementById("filterInput").addEventListener("input", (ev) => {
+  filterText = ev.target.value || "";
+  selectedIndex = filterText ? 0 : -1;
+  rerender();
+});
+
+// ---------- editor info live ----------
+document.getElementById("editorArea").addEventListener("input", updateEditorInfo);
+
+refresh();
+</script>
+</body>
+</html>
