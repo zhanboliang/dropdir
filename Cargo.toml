@@ -2,6 +2,24 @@
 name = "dropdir"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85"
+authors = ["zhanboliang"]
+description = "A tiny, zero-config file manager served over HTTP from a local directory. Browse, upload, rename, delete, and edit files in your browser from a single self-contained Rust binary."
+documentation = "https://docs.rs/dropdir"
+homepage = "https://github.com/zhanboliang/dropdir"
+repository = "https://github.com/zhanboliang/dropdir"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+keywords = ["file-manager", "http", "server", "upload", "cli"]
+categories = ["command-line-utilities", "filesystem", "web-programming::http-server"]
+exclude = [
+    ".github/",
+    ".gitignore",
+    ".DS_Store",
+    "**/.DS_Store",
+    "target/",
+    "*.log",
+]
 
 [dependencies]
 axum = { version = "0.7", features = ["multipart"] }
