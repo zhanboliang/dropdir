@@ -1,5 +1,7 @@
 # dropdir
 
+[![Crates.io](https://img.shields.io/crates/v/dropdir.svg)](https://crates.io/crates/dropdir)
+
 [English](./README.md) | [中文](./README.zh-CN.md)
 
 A tiny, zero-config file manager served over HTTP from a local directory. Run it in a folder (or point it at one), open the printed URL in your browser, and you get a browseable list with upload / delete / rename / in-browser text editing.
@@ -26,6 +28,12 @@ dropdir is aimed at "the tool you point at a folder when you need to move files 
 - **Symlink write protection.** `write`, `upload`, and `rename` use `symlink_metadata` to refuse operations that would go *through* a symlink to an arbitrary target.
 - **Browser hardening.** Every response carries a strict CSP (`default-src 'none'`), `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, and `X-Frame-Options: DENY`. Downloads are served as `Content-Disposition: attachment`, so HTML/SVG uploaded to dropdir cannot execute scripts in the browser.
 - **Size caps.** Editor read/write is capped at 10 MiB. Upload body is capped at 1 GiB.
+
+## Installation
+
+```bash
+cargo install dropdir
+```
 
 ## Build & install
 

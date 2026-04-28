@@ -1,5 +1,7 @@
 # dropdir
 
+[![Crates.io](https://img.shields.io/crates/v/dropdir.svg)](https://crates.io/crates/dropdir)
+
 [English](./README.md) | [中文](./README.zh-CN.md)
 
 一个极简、零配置的本地目录 HTTP 文件管理器。在一个目录下启动(或用命令行指定目录),打开 banner 里打印的 URL,即可在浏览器里浏览、上传、删除、重命名、在线编辑文本文件。
@@ -26,6 +28,12 @@ dropdir 的定位是"把它指向某个目录,快速搬几个文件",不是生�
 - **符号链接写入保护。** `write` / `upload` / `rename` 都会先用 `symlink_metadata` 检查目标,拒绝"穿透符号链接写到外部位置"的请求。
 - **浏览器侧加固。** 响应中间件统一注入严格 CSP(`default-src 'none'`)、`X-Content-Type-Options: nosniff`、`Referrer-Policy: no-referrer`、`X-Frame-Options: DENY`。下载接口使用 `Content-Disposition: attachment`,即使有人往 dropdir 扔 HTML/SVG,浏览器也不会执行其中脚本。
 - **大小上限。** 编辑器读写上限 10 MiB;上传请求体上限 1 GiB。
+
+## 安装
+
+```bash
+cargo install dropdir
+```
 
 ## 构建 & 安装
 
